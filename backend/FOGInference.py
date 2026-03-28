@@ -19,7 +19,7 @@ T = joblib.load("transition_matrix.pkl")
 
 
 def generate_dust_reading():
-    return round(random.uniform(0, 500), 2)
+    return round(random.uniform(0, 250), 2)
 
 def compute_slope(x):
     N = len(x)
