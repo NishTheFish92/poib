@@ -19,7 +19,7 @@ T = joblib.load("transition_matrix.pkl")
 
 
 def generate_dust_reading():
-    return round(random.uniform(0, 250), 2)
+    return round(random.uniform(5, 25), 2)  # close to the training data's typical dust level
 
 def compute_slope(x):
     N = len(x)
@@ -141,9 +141,9 @@ def process_new_reading(readings):
     risk_15  = future_risk(P_A, fault_probs, 3)
     risk_30  = future_risk(P_A, fault_probs, 6)
 
-    if P_A < 0.2:
+    if P_A < 0.38:
         alert = "GREEN"
-    elif P_A < 0.5:
+    elif P_A < 0.6:
         alert = "YELLOW"
     else:
         alert = "RED"

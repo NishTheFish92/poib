@@ -1,0 +1,23 @@
+[project]
+name = "tp"
+version = "0.1.0"
+description = "Data centre environment anomaly detection (Isolation Forest + Markov risk forecast)"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",  # [standard] pulls in websockets, needed for /ws
+    "pydantic",
+    "numpy",
+    "pandas",
+    "joblib",
+    # The bundled .pkl files were saved with scikit-learn 1.6.1
+    "scikit-learn==1.6.1",
+]
+
+[dependency-groups]
+# Only for the offline experiment script (anomalyTest.py)
+analysis = [
+    "scipy",
+    "matplotlib",
+]

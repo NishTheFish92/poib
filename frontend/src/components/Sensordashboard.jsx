@@ -51,8 +51,8 @@ function generateMockReading() {
 }
 
 function getAlertFromPA(P_A) {
-  if (P_A < 0.2) return "GREEN";
-  if (P_A < 0.5) return "YELLOW";
+  if (P_A < 0.38) return "GREEN";
+  if (P_A < 0.6) return "YELLOW";
   return "RED";
 }
 
@@ -532,19 +532,19 @@ export default function SensorDashboard() {
                     contentStyle={{ background: "#0f1117", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, fontFamily: "'Share Tech Mono', monospace", fontSize: 11 }}
                     formatter={(v) => [`${v}%`, "P(Anomaly)"]}
                   />
-                  <ReferenceLine y={20} stroke="#f59e0b" strokeDasharray="4 4" strokeOpacity={0.5} />
-                  <ReferenceLine y={50} stroke="#ef4444" strokeDasharray="4 4" strokeOpacity={0.5} />
+                  <ReferenceLine y={38} stroke="#f59e0b" strokeDasharray="4 4" strokeOpacity={0.5} />
+                  <ReferenceLine y={60} stroke="#ef4444" strokeDasharray="4 4" strokeOpacity={0.5} />
                   <Line type="monotone" dataKey="P_A" stroke="#22c55e" strokeWidth={2} dot={false} style={{ filter: "drop-shadow(0 0 4px rgba(34,197,94,0.6))" }} />
                 </LineChart>
               </ResponsiveContainer>
               <div style={{ display: "flex", gap: 16, marginTop: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <div style={{ width: 20, height: 1, background: "#f59e0b", opacity: 0.5 }} />
-                  <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: 10, color: "#6b7280" }}>20% — CAUTION</span>
+                  <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: 10, color: "#6b7280" }}>38% — CAUTION</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <div style={{ width: 20, height: 1, background: "#ef4444", opacity: 0.5 }} />
-                  <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: 10, color: "#6b7280" }}>50% — CRITICAL</span>
+                  <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: 10, color: "#6b7280" }}>60% — CRITICAL</span>
                 </div>
               </div>
             </div>
