@@ -21,31 +21,46 @@ const FAULT_COLORS = {
 const SENSOR_META = {
   temp:     { label: "TEMPERATURE", unit: "°C",  field: "temp",     color: "#f97316", min: 15, max: 50 },
   humidity: { label: "HUMIDITY",    unit: "%",   field: "humidity", color: "#38bdf8", min: 0,  max: 100 },
-  eco2:     { label: "eCO₂",        unit: "ppm", field: "eco2",     color: "#a78bfa", min: 400, max: 2000 },
+  eco2:     { label: "eCO₂",        unit: "ppm", field: "eco2",     color: "#a78bfa", min: 300, max: 1500 },
   dust:     { label: "DUST",        unit: "µg/m³",field: "dust",   color: "#fb923c", min: 0,  max: 1000 },
 };
+
+// Markov risk decays toward Normal over longer horizons, so each horizon gets its own
+// cut-offs, matched to the risk produced at the CAUTION (P_A 0.38) / CRITICAL (P_A 0.6) lines.
+const RISK_THRESHOLDS = {
+  10: { warn: 0.17, danger: 0.25 },
+  15: { warn: 0.13, danger: 0.19 },
+  30: { warn: 0.08, danger: 0.11 },
+};
+
+function riskColor(value, horizon) {
+  const t = RISK_THRESHOLDS[horizon];
+  return value > t.danger ? "#ef4444" : value > t.warn ? "#f59e0b" : "#22c55e";
+}
 
 // ─── Mock data generator (used when WS not connected) ─────────────────────────
 let mockT = 0;
 function generateMockReading() {
   mockT++;
   const anomalyBurst = mockT % 30 < 5;
+  // Mirrors the real backend's output ranges (P_A floor ~0.28, dust 5–25)
+  const P_A = anomalyBurst ? 0.45 + Math.random() * 0.25 : 0.27 + Math.random() * 0.05;
   return {
     temp:     +(32 + Math.sin(mockT * 0.3) * 2 + (anomalyBurst ? 3 : 0) + (Math.random() - 0.5) * 0.4).toFixed(2),
     humidity: +(50 + Math.cos(mockT * 0.2) * 5 + (Math.random() - 0.5) * 1).toFixed(1),
     eco2:     +(620 + Math.sin(mockT * 0.15) * 60 + (anomalyBurst ? 120 : 0) + (Math.random() - 0.5) * 20).toFixed(0),
-    dust:     +(420 + Math.cos(mockT * 0.25) * 80 + (anomalyBurst ? 200 : 0) + (Math.random() - 0.5) * 30).toFixed(0),
+    dust:     +(15 + Math.cos(mockT * 0.25) * 8 + (Math.random() - 0.5) * 4).toFixed(2),
     // Simulated model outputs
-    score:      +(anomalyBurst ? -0.08 : 0.07 + Math.random() * 0.06).toFixed(4),
-    P_A:        +(anomalyBurst ? 0.78 + Math.random() * 0.1 : 0.08 + Math.random() * 0.06).toFixed(3),
-    Risk_10min: +(anomalyBurst ? 0.35 + Math.random() * 0.2 : 0.04 + Math.random() * 0.03).toFixed(3),
-    Risk_15min: +(anomalyBurst ? 0.42 + Math.random() * 0.2 : 0.05 + Math.random() * 0.03).toFixed(3),
-    Risk_30min: +(anomalyBurst ? 0.55 + Math.random() * 0.2 : 0.07 + Math.random() * 0.03).toFixed(3),
+    score:      +(-Math.log(P_A / (1 - P_A)) / 5).toFixed(4),
+    P_A:        +P_A.toFixed(3),
+    Risk_10min: +(0.13 + (P_A - 0.28) * 0.375).toFixed(3),
+    Risk_15min: +(0.106 + (P_A - 0.28) * 0.27).toFixed(3),
+    Risk_30min: +(0.071 + (P_A - 0.28) * 0.106).toFixed(3),
     P_Thermal:  +(anomalyBurst ? 0.45 : 0.25 + Math.random() * 0.1).toFixed(3),
     P_CO2:      +(anomalyBurst ? 0.28 : 0.25 + Math.random() * 0.1).toFixed(3),
     P_Dust:     +(anomalyBurst ? 0.18 : 0.25 + Math.random() * 0.1).toFixed(3),
     P_Sensor:   +(anomalyBurst ? 0.09 : 0.25 + Math.random() * 0.1).toFixed(3),
-    alert:      anomalyBurst ? (Math.random() > 0.5 ? "RED" : "YELLOW") : "GREEN",
+    alert:      getAlertFromPA(P_A),
     timestamp:  new Date().toISOString(),
   };
 }
@@ -112,11 +127,9 @@ function GaugeBar({ value, min, max, color, label, unit }) {
   );
 }
 
-function RiskMeter({ value, label, color }) {
+function RiskMeter({ value, label, horizon }) {
   const pct = Math.min(100, (value * 100).toFixed(1));
-  const danger = value > 0.3;
-  const warn = value > 0.1;
-  const meterColor = danger ? "#ef4444" : warn ? "#f59e0b" : "#22c55e";
+  const meterColor = riskColor(value, horizon);
   return (
     <div style={{
       background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
@@ -479,9 +492,9 @@ export default function SensorDashboard() {
                 MARKOV RISK FORECAST
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <RiskMeter value={latest?.Risk_10min || 0} label="RISK  +10 MIN  (2 steps)" />
-                <RiskMeter value={latest?.Risk_15min || 0} label="RISK  +15 MIN  (3 steps)" />
-                <RiskMeter value={latest?.Risk_30min || 0} label="RISK  +30 MIN  (6 steps)" />
+                <RiskMeter value={latest?.Risk_10min || 0} label="RISK  +10 MIN  (2 steps)" horizon={10} />
+                <RiskMeter value={latest?.Risk_15min || 0} label="RISK  +15 MIN  (3 steps)" horizon={15} />
+                <RiskMeter value={latest?.Risk_30min || 0} label="RISK  +30 MIN  (6 steps)" horizon={30} />
               </div>
             </div>
 
@@ -580,8 +593,8 @@ export default function SensorDashboard() {
                         <td style={{ padding: "9px 12px", color: SENSOR_META.dust.color }}>{row.dust}</td>
                         <td style={{ padding: "9px 12px", color: row.score >= 0 ? "#22c55e" : "#ef4444" }}>{row.score?.toFixed(4)}</td>
                         <td style={{ padding: "9px 12px", color: cfg.color }}>{(row.P_A * 100).toFixed(1)}%</td>
-                        <td style={{ padding: "9px 12px", color: row.Risk_10min > 0.3 ? "#ef4444" : row.Risk_10min > 0.1 ? "#f59e0b" : "#22c55e" }}>{(row.Risk_10min * 100).toFixed(1)}%</td>
-                        <td style={{ padding: "9px 12px", color: row.Risk_30min > 0.3 ? "#ef4444" : row.Risk_30min > 0.1 ? "#f59e0b" : "#22c55e" }}>{(row.Risk_30min * 100).toFixed(1)}%</td>
+                        <td style={{ padding: "9px 12px", color: riskColor(row.Risk_10min, 10) }}>{(row.Risk_10min * 100).toFixed(1)}%</td>
+                        <td style={{ padding: "9px 12px", color: riskColor(row.Risk_30min, 30) }}>{(row.Risk_30min * 100).toFixed(1)}%</td>
                         <td style={{ padding: "9px 12px" }}>
                           <span style={{ color: cfg.color, padding: "2px 8px", background: cfg.bg, borderRadius: 3, fontSize: 10, letterSpacing: "0.1em" }}>
                             {cfg.label}
