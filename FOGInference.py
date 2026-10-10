@@ -1,0 +1,147 @@
+import joblib
+import numpy as np
+import pandas as pd
+from collections import deque
+
+# Load trained model
+model = joblib.load("isolation_forest_model.pkl")
+
+baseline_mu = joblib.load("baseline_mu.pkl")
+baseline_sigma = joblib.load("baseline_sigma.pkl")
+
+WINDOW_SIZE = 5
+
+buffer = deque(maxlen=WINDOW_SIZE)
+
+#Loading the T matrix (Downloaded it from google colab)
+T = joblib.load("transition_matrix.pkl")
+
+def compute_slope(x):
+    N = len(x)
+    i = np.arange(1, N+1)
+    i_bar = np.mean(i)
+    x_bar = np.mean(x)
+    return np.sum((i - i_bar)*(x - x_bar)) / np.sum((i - i_bar)**2)
+
+def extract_features(window_df):
+    features = []
+
+    for field in ['field3','field4','field5','field7']:
+        values = window_df[field].values
+
+        mean = np.mean(values)
+        std = np.std(values)
+        slope = compute_slope(values)
+
+        features.append(mean)
+        features.append(std)
+        features.append(slope)
+
+    return np.array(features)
+
+
+
+
+def fault_probabilities(z_features):
+    # z_features must be numpy array of 12 features
+
+    z = z_features.flatten()
+
+    # Indices based on feature order
+    # [f3_mean,f3_std,f3_slope,
+    #  f4_mean,f4_std,f4_slope,
+    #  f5_mean,f5_std,f5_slope,
+    #  f7_mean,f7_std,f7_slope]
+
+    E_thermal = max(0, z[0]) + max(0, z[3])
+    E_co2     = max(0, z[6])
+    E_dust    = max(0, z[9])
+    E_sensor  = max(0, z[1]) + max(0, z[10])
+
+    evidence = np.array([E_thermal, E_co2, E_dust, E_sensor])
+
+    # Softmax
+    exp_vals = np.exp(evidence)
+    probs = exp_vals / np.sum(exp_vals)
+
+    return probs  # [P_Thermal, P_CO2, P_Dust, P_Sensor]
+
+
+def future_risk(P_A, fault_probs, steps):
+
+    # Initial state vector
+    state = np.array([
+        1 - P_A,
+        P_A * fault_probs[0],
+        P_A * fault_probs[1],
+        P_A * fault_probs[2],
+        P_A * fault_probs[3]
+    ])
+
+    for _ in range(steps):
+        state = state @ T
+
+    # Risk = probability of being in any fault state
+    return state[1:].sum()
+
+
+#This function is used to get the probability of the score output by Isolation Forest. (Previously we were doing it manually)
+def anomaly_probability(score):
+    return 1 / (1 + np.exp(5 * score))
+
+
+def process_new_reading(temp, humidity, eco2, dust):
+
+    # Add new reading to buffer
+    buffer.append({
+        'field3': temp,
+        'field4': humidity,
+        'field5': eco2,
+        'field7': dust
+    })
+
+    # Wait until buffer full
+    if len(buffer) < WINDOW_SIZE:
+        return "Waiting for full window..."
+
+    # Convert to DataFrame
+    window_df = pd.DataFrame(buffer)
+
+    # Extract features
+    features = extract_features(window_df)
+
+    # Normalize using training baseline
+    z_features = (features - baseline_mu) / baseline_sigma
+
+    # Reshape for model
+    z_features = z_features.values.reshape(1, -1)
+    
+
+    # Predict
+    score = model.decision_function(z_features)[0]
+    label = model.predict(z_features)[0]
+
+    P_A= anomaly_probability(score)
+
+
+    fault_probs = fault_probabilities(z_features)
+
+    risk_10  = future_risk(P_A, fault_probs, 2)  # ~10 min
+    risk_15  = future_risk(P_A, fault_probs, 3)
+    risk_30  = future_risk(P_A, fault_probs, 6)
+
+    return {
+        "score": score,
+        "P_A": P_A,
+        "Risk_10min": risk_10,
+        "Risk_15min": risk_15,
+        "Risk_30min": risk_30
+    }
+
+
+
+print(process_new_reading(32.8, 51, 620, 430))
+print(process_new_reading(33.0, 50, 640, 410))
+print(process_new_reading(33.1, 52, 650, 420))
+print(process_new_reading(33.3, 53, 660, 415))
+print(process_new_reading(33.5, 54, 670, 405))
