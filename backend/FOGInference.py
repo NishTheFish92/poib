@@ -141,7 +141,7 @@ def process_new_reading(readings):
     risk_15  = future_risk(P_A, fault_probs, 3)
     risk_30  = future_risk(P_A, fault_probs, 6)
 
-    if P_A < 0.38:
+    if P_A < 0.40:
         alert = "GREEN"
     elif P_A < 0.6:
         alert = "YELLOW"

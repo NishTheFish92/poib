@@ -2,13 +2,6 @@
 #include <HTTPClient.h>
 #include <EEPROM.h>
 #include <DHT.h>
-#include <Adafruit_NeoPixel.h>
-
-
-// ── Built-in RGB LED (ESP32-S3) ───────────────────────────────────────────────
-#define LED_PIN   48    // GPIO48 on ESP32-S3
-#define LED_COUNT  1
-Adafruit_NeoPixel led(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 // ── Sensor pins ──────────────────────────────────────────────────────────────
 #define DHT_PIN   4
@@ -21,7 +14,7 @@ Adafruit_NeoPixel led(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 // ── Timing ────────────────────────────────────────────────────────────────────
 #define SAMPLE_INTERVAL_MS  5000
-#define SEND_INTERVAL_MS   60000
+#define SEND_INTERVAL_MS   15000
 
 DHT dht(DHT_PIN, DHT11);
 
@@ -32,16 +25,9 @@ int   sampleCount = 0;
 unsigned long lastSampleTime = 0;
 unsigned long lastSendTime   = 0;
 
-// ── LED helpers ───────────────────────────────────────────────────────────────
-void setLED(uint8_t r, uint8_t g, uint8_t b) {
-  led.setPixelColor(0, led.Color(r, g, b));
-  led.show();
-}
-
 // ── WiFi ──────────────────────────────────────────────────────────────────────
 void connectWiFi() {
-  setLED(255, 165, 0);  // Orange while connecting
-  WiFi.begin("jeeva's OnePlus 11", "12345678");
+  WiFi.begin("Round3 (the sequel)", "spring roll ");
   Serial.print("Connecting to WiFi");
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -50,17 +36,15 @@ void connectWiFi() {
   Serial.println();
   Serial.print("Connected. Gateway: ");
   Serial.println(WiFi.gatewayIP().toString());
-  setLED(0, 255, 0);    // Green when connected
 }
 
 void sendData(float avgTemp, float avgHum, float avgCO2) {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("WiFi disconnected, skipping send.");
-    setLED(255, 0, 0);  // Red if disconnected
     return;
   }
 
-  String url     = "http://your-api-link.com/sensor";
+  String url     = "http://10.102.240.174:8000/items";
   String payload = "{\"temperature\":" + String(avgTemp, 2)
                  + ",\"humidity\":"    + String(avgHum,  2)
                  + ",\"co2_ppm\":"     + String(avgCO2,  2) + "}";
@@ -94,10 +78,6 @@ void setup() {
   EEPROM.begin(512);
   dht.begin();
 
-  led.begin();
-  led.setBrightness(50);  // 0-255, keep low to avoid power issues
-  setLED(0, 0, 0);        // Off initially
-
   EEPROM.get(0, R0);
   if (isnan(R0) || R0 <= 0) {
     Serial.println("WARNING: No valid R0 in EEPROM. Using R0_DEFAULT.");
@@ -116,7 +96,7 @@ void loop() {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("WiFi lost. Reconnecting...");
     WiFi.disconnect();
-    connectWiFi();  // Will turn orange then green again
+    connectWiFi();
   }
 
   unsigned long now = millis();

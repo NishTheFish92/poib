@@ -26,10 +26,10 @@ const SENSOR_META = {
 };
 
 // Markov risk decays toward Normal over longer horizons, so each horizon gets its own
-// cut-offs, matched to the risk produced at the CAUTION (P_A 0.38) / CRITICAL (P_A 0.6) lines.
+// cut-offs, matched to the risk produced at the CAUTION (P_A 0.40) / CRITICAL (P_A 0.6) lines.
 const RISK_THRESHOLDS = {
-  10: { warn: 0.17, danger: 0.25 },
-  15: { warn: 0.13, danger: 0.19 },
+  10: { warn: 0.18, danger: 0.25 },
+  15: { warn: 0.14, danger: 0.19 },
   30: { warn: 0.08, danger: 0.11 },
 };
 
@@ -66,7 +66,7 @@ function generateMockReading() {
 }
 
 function getAlertFromPA(P_A) {
-  if (P_A < 0.38) return "GREEN";
+  if (P_A < 0.40) return "GREEN";
   if (P_A < 0.6) return "YELLOW";
   return "RED";
 }
@@ -298,7 +298,7 @@ export default function SensorDashboard() {
 
     return () => {
       ws?.close();
-      if (mockRef.current) clearInterval(mockRef.current);
+      if (mockRef.current) { clearInterval(mockRef.current); mockRef.current = null; }
     };
   }, [pushReading]);
 
@@ -370,9 +370,6 @@ export default function SensorDashboard() {
             <div>
               <div style={{ fontFamily: "'Share Tech Mono', monospace", fontWeight: 700, fontSize: 18, letterSpacing: "0.12em", color: "#f3f4f6" }}>
                 ENVIRO<span style={{ color: "#22c55e" }}>WATCH</span>
-              </div>
-              <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: 10, color: "#4b5563", letterSpacing: "0.1em" }}>
-                ANOMALY DETECTION SYSTEM v2.1
               </div>
             </div>
           </div>
@@ -545,7 +542,7 @@ export default function SensorDashboard() {
                     contentStyle={{ background: "#0f1117", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, fontFamily: "'Share Tech Mono', monospace", fontSize: 11 }}
                     formatter={(v) => [`${v}%`, "P(Anomaly)"]}
                   />
-                  <ReferenceLine y={38} stroke="#f59e0b" strokeDasharray="4 4" strokeOpacity={0.5} />
+                  <ReferenceLine y={40} stroke="#f59e0b" strokeDasharray="4 4" strokeOpacity={0.5} />
                   <ReferenceLine y={60} stroke="#ef4444" strokeDasharray="4 4" strokeOpacity={0.5} />
                   <Line type="monotone" dataKey="P_A" stroke="#22c55e" strokeWidth={2} dot={false} style={{ filter: "drop-shadow(0 0 4px rgba(34,197,94,0.6))" }} />
                 </LineChart>
@@ -553,7 +550,7 @@ export default function SensorDashboard() {
               <div style={{ display: "flex", gap: 16, marginTop: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <div style={{ width: 20, height: 1, background: "#f59e0b", opacity: 0.5 }} />
-                  <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: 10, color: "#6b7280" }}>38% — CAUTION</span>
+                  <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: 10, color: "#6b7280" }}>40% — CAUTION</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <div style={{ width: 20, height: 1, background: "#ef4444", opacity: 0.5 }} />
