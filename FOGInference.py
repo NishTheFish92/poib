@@ -140,8 +140,9 @@ def process_new_reading(temp, humidity, eco2, dust):
 
 
 
-print(process_new_reading(32.8, 51, 620, 430))
-print(process_new_reading(33.0, 50, 640, 410))
-print(process_new_reading(33.1, 52, 650, 420))
-print(process_new_reading(33.3, 53, 660, 415))
-print(process_new_reading(33.5, 54, 670, 405))
+if __name__ == "__main__":
+    print(process_new_reading(32.8, 51, 620, 430))
+    print(process_new_reading(33.0, 50, 640, 410))
+    print(process_new_reading(33.1, 52, 650, 420))
+    print(process_new_reading(33.3, 53, 660, 415))
+    print(process_new_reading(33.5, 54, 670, 405))
