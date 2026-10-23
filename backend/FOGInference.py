@@ -1,21 +1,24 @@
+import os
 import joblib
 import numpy as np
 import pandas as pd
 from collections import deque
 import random
 
-# Load trained model
-model = joblib.load("isolation_forest_model.pkl")
+MODEL_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "model")
 
-baseline_mu = joblib.load("baseline_mu.pkl")
-baseline_sigma = joblib.load("baseline_sigma.pkl")
+# Load trained model
+model = joblib.load(os.path.join(MODEL_DIR, "isolation_forest_model.pkl"))
+
+baseline_mu = joblib.load(os.path.join(MODEL_DIR, "baseline_mu.pkl"))
+baseline_sigma = joblib.load(os.path.join(MODEL_DIR, "baseline_sigma.pkl"))
 
 WINDOW_SIZE = 5
 
 buffer = deque(maxlen=WINDOW_SIZE)
 
 #Loading the T matrix (Downloaded it from google colab)
-T = joblib.load("transition_matrix.pkl")
+T = joblib.load(os.path.join(MODEL_DIR, "transition_matrix.pkl"))
 
 
 def generate_dust_reading():

@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-# Only for the offline experiment script (anomalyTest.py)
+# Only for the offline experiment script (tests/anomalyTest.py)
 analysis = [
     "scipy",
     "matplotlib",

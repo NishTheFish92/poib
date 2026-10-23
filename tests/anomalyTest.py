@@ -1,3 +1,11 @@
+import os
+import sys
+
+# Run from the project root so data/model paths and FOGInference resolve
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+os.chdir(ROOT)
+sys.path.insert(0, ROOT)
+
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -9,7 +17,7 @@ from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
-    roc_auc_score, average_precision_score, precision_recall_curve,
+    roc_auc_score, precision_recall_curve,
 )
 import FOGInference
 from FOGInference import process_new_reading
@@ -46,7 +54,7 @@ def best_f1_threshold(y_true, scores):
 
 
 # Load dataset
-df = pd.read_csv("indoor_data.csv")
+df = pd.read_csv("data/indoor_data.csv")
 df['created_at'] = pd.to_datetime(df['created_at'])
 df = df.sort_values('created_at').reset_index(drop=True)
 
@@ -75,11 +83,6 @@ iso_model = IsolationForest(
 iso_model.fit(X_scaled)
 
 df['anomaly'] = (iso_model.predict(X_scaled) == -1).astype(int)
-
-# Naive baseline: current point's anomaly score as risk (0 to 1)
-anomaly_score = iso_model.decision_function(X_scaled)
-df['naive_risk'] = (anomaly_score.max() - anomaly_score)
-df['naive_risk'] = df['naive_risk'] / df['naive_risk'].max()
 
 for h in HORIZONS:
     df[f'actual_{h}'] = create_future_label(df, h)
@@ -127,15 +130,12 @@ def evaluate(h, score_col, name):
         'recall': recall_score(y_test, y_pred),
         'f1': f1_score(y_test, y_pred),
         'roc_auc': roc_auc_score(y_test, test[score_col]),
-        'pr_auc': average_precision_score(y_test, test[score_col]),
-        'pos_rate': y_test.mean(),           # PR-AUC of a random guess
         'correlation': corr,
     }
 
 
 results = []
 for h in HORIZONS:
-    results.append(evaluate(h, 'naive_risk', 'naive'))
     results.append(evaluate(h, f'fog_{h}', 'fog'))
 
 results = pd.DataFrame(results).set_index(['horizon', 'model'])
